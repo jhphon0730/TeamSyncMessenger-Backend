@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	messagetype "TeamSyncMessenger-Backend/tcp/messageType"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -9,17 +10,12 @@ import (
 	"time"
 )
 
-type Message struct {
-	Type    string      `json:"type"`
-	Content interface{} `json:"content"`
-}
-
 type Client struct {
 	Conn        net.Conn
 	LastMessage time.Time
 }
 
-func (c *Client) sendMessage(message Message) error {
+func (c *Client) sendMessage(message messagetype.Message) error {
 	writeData, err := json.Marshal(message)
 	if err != nil {
 		return err
@@ -56,7 +52,7 @@ func NewServer(ServerPort string) *Server {
 	}
 }
 
-func (s *Server) server(messages chan Message) {
+func (s *Server) server(messages chan messagetype.Message) {
 	for {
 		msg := <-messages
 		switch msg.Type {
@@ -73,7 +69,7 @@ func (s *Server) server(messages chan Message) {
 }
 
 func (s *Server) RunServer() {
-	messages := make(chan Message)
+	messages := make(chan messagetype.Message)
 	go s.server(messages)
 
 	for {
@@ -89,7 +85,7 @@ func (s *Server) RunServer() {
 }
 
 // 연결을 받아 처리하는 함수
-func (s *Server) acceptConnections(conn net.Conn, messages chan Message) *Client {
+func (s *Server) acceptConnections(conn net.Conn, messages chan messagetype.Message) *Client {
 	// 클라이언트 정보 추출
 	clientAddr := conn.RemoteAddr().String()
 
@@ -102,7 +98,7 @@ func (s *Server) acceptConnections(conn net.Conn, messages chan Message) *Client
 
 	log.Println("Connected: ", clientAddr)
 
-	message := Message{
+	message := messagetype.Message{
 		Type:    "connect_success",
 		Content: clientAddr,
 	}
@@ -116,7 +112,7 @@ func (s *Server) acceptConnections(conn net.Conn, messages chan Message) *Client
 }
 
 // 클라이언트로부터 받은 메시지를 처리하는 부분
-func (s *Server) receiveMessages(client *Client, messages chan Message) {
+func (s *Server) receiveMessages(client *Client, messages chan messagetype.Message) {
 	defer func() {
 		// 클라이언트 연결이 종료되면 해당 클라이언트를 서버에서 제거
 		clientAddr := client.Conn.RemoteAddr().String()
@@ -147,7 +143,7 @@ func (s *Server) receiveMessages(client *Client, messages chan Message) {
 		buffer = append(buffer, tempBuffer[:n]...)
 
 		// Attempt to decode the received data as JSON
-		var message Message
+		var message messagetype.Message
 		decoder := json.NewDecoder(bytes.NewReader(buffer))
 		if err := decoder.Decode(&message); err == nil {
 			// Successfully decoded a JSON object
@@ -158,8 +154,8 @@ func (s *Server) receiveMessages(client *Client, messages chan Message) {
 }
 
 // 클라이언트로부터 받은 메시지를 Type에 맞게 동작함
-func (s *Server) handleMessage(buffer []byte, n int, messages chan Message) {
-	var message Message
+func (s *Server) handleMessage(buffer []byte, n int, messages chan messagetype.Message) {
+	var message messagetype.Message
 
 	err := json.Unmarshal(buffer[:n], &message)
 	if err != nil {
@@ -168,7 +164,7 @@ func (s *Server) handleMessage(buffer []byte, n int, messages chan Message) {
 	}
 
 	log.Println("서버로부터 받은 헤더: ", message.Type)
-	messages <- Message{
+	messages <- messagetype.Message{
 		Type:    message.Type,
 		Content: message.Content,
 	}
