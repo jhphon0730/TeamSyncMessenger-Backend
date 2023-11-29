@@ -1,8 +1,10 @@
 package routes
 
 import (
+	"TeamSyncMessenger-Backend/controller"
 	"TeamSyncMessenger-Backend/database"
 	"TeamSyncMessenger-Backend/middleware"
+	"TeamSyncMessenger-Backend/service"
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +12,10 @@ import (
 
 var (
 	db *sql.DB = database.InitDB()
+
+	userService service.UserService = service.NewUserService(db)
+
+	userController controller.UserController = controller.NewUserController(userService)
 )
 
 func SetupRouter() (*gin.Engine, *sql.DB) {
@@ -17,9 +23,7 @@ func SetupRouter() (*gin.Engine, *sql.DB) {
 
 	r.Use(middleware.SetHeader)
 
-	r.GET("/", func(ctx *gin.Context) {
-		ctx.AbortWithStatusJSON(200, "Good")
-	})
+	r.GET("/", userController.TestUser)
 
 	return r, db
 }
