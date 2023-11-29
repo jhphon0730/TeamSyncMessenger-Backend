@@ -1,14 +1,39 @@
 package tcp
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"time"
 )
 
+type Message struct {
+	Type    string      `json:"type"`
+	Content interface{} `json:"content"`
+}
+
 type Client struct {
 	Conn        net.Conn
 	LastMessage time.Time
+}
+
+func (c *Client) sendMessage(message Message) error {
+	writeData, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.Conn.Write(writeData)
+	return err
+}
+
+// 추가: 연결이 이미 닫혀 있는지 확인하는 함수
+func (c *Client) isClosed() bool {
+	// 추가: 연결이 이미 닫혔는지 확인
+	_, err := c.Conn.Read([]byte{})
+	return err != nil
 }
 
 type Server struct {
@@ -31,7 +56,26 @@ func NewServer(ServerPort string) *Server {
 	}
 }
 
+func (s *Server) server(messages chan Message) {
+	for {
+		msg := <-messages
+		switch msg.Type {
+		case "disconnect":
+			clientAddr := msg.Content.(string)
+			if client, ok := s.clients[clientAddr]; ok {
+				// 클라이언트 연결 해제 로직 추가
+				delete(s.clients, clientAddr)
+				client.Conn.Close()
+				log.Printf("Disconnect %s\n", clientAddr)
+			}
+		}
+	}
+}
+
 func (s *Server) RunServer() {
+	messages := make(chan Message)
+	go s.server(messages)
+
 	for {
 		conn, err := s.tcpListener.Accept()
 		if err != nil {
@@ -39,13 +83,13 @@ func (s *Server) RunServer() {
 			continue
 		}
 
-		s.acceptConnections(conn)
-		go s.receiveMessages(s.clients[conn.RemoteAddr().String()])
+		client := s.acceptConnections(conn, messages)
+		go s.receiveMessages(client, messages)
 	}
 }
 
 // 연결을 받아 처리하는 함수
-func (s *Server) acceptConnections(conn net.Conn) {
+func (s *Server) acceptConnections(conn net.Conn, messages chan Message) *Client {
 	// 클라이언트 정보 추출
 	clientAddr := conn.RemoteAddr().String()
 
@@ -56,42 +100,76 @@ func (s *Server) acceptConnections(conn net.Conn) {
 	}
 	s.clients[clientAddr] = client
 
-	log.Printf("Accepted connection from %s\n", clientAddr)
+	log.Println("Connected: ", clientAddr)
+
+	message := Message{
+		Type:    "connect_success",
+		Content: clientAddr,
+	}
+
+	err := client.sendMessage(message)
+	if err != nil {
+		log.Panic("클라이언트 연결 에러: ", err.Error())
+	}
+
+	return client
 }
 
 // 클라이언트로부터 받은 메시지를 처리하는 부분
-func (s *Server) receiveMessages(client *Client) {
-	// 클라이언트의 연결이 종료될 때까지 계속해서 메시지를 받습니다.
+func (s *Server) receiveMessages(client *Client, messages chan Message) {
+	defer func() {
+		// 클라이언트 연결이 종료되면 해당 클라이언트를 서버에서 제거
+		clientAddr := client.Conn.RemoteAddr().String()
+		delete(s.clients, clientAddr)
+		log.Printf("Connection from %s closed\n", clientAddr)
+	}()
+
 	for {
-		buffer := make([]byte, 1024)
-		n, err := client.Conn.Read(buffer)
-		if err != nil {
-			log.Printf("Error reading from %s: %v\n", client.Conn.RemoteAddr().String(), err)
-			break
-		}
-
-		if n > 0 {
-			message := string(buffer[:n])
-			log.Printf("Received from %s: %s", client.Conn.RemoteAddr().String(), message)
-
-			// 받은 메시지를 다른 클라이언트들에게 뿌려주기
-			s.broadcast(message, client.Conn)
+		// 추가: 연결이 이미 닫혀 있는지 확인
+		if client.isClosed() {
+			return
 		}
 
 		// 메시지를 받은 시간 업데이트
 		client.LastMessage = time.Now()
+
+		var buffer []byte
+		tempBuffer := make([]byte, 1024) // Temporary buffer
+
+		n, err := client.Conn.Read(tempBuffer)
+		if err != nil && client.Conn != nil {
+			if err != io.EOF {
+				log.Println("메시지 받기 실패 에러: ", err.Error())
+			}
+			return
+		}
+
+		buffer = append(buffer, tempBuffer[:n]...)
+
+		// Attempt to decode the received data as JSON
+		var message Message
+		decoder := json.NewDecoder(bytes.NewReader(buffer))
+		if err := decoder.Decode(&message); err == nil {
+			// Successfully decoded a JSON object
+			s.handleMessage(buffer[:decoder.InputOffset()], len(buffer[:decoder.InputOffset()]), messages)
+			buffer = buffer[decoder.InputOffset():]
+		}
 	}
 }
 
-// 다른 클라이언트들에게 메시지를 뿌리는 함수
-func (s *Server) broadcast(message string, sender net.Conn) {
-	for _, otherClient := range s.clients {
-		// 메시지를 보낸 클라이언트에게는 전송하지 않음
-		if otherClient.Conn != sender {
-			_, err := otherClient.Conn.Write([]byte(message))
-			if err != nil {
-				log.Printf("Error writing to %s: %v\n", otherClient.Conn.RemoteAddr().String(), err)
-			}
-		}
+// 클라이언트로부터 받은 메시지를 Type에 맞게 동작함
+func (s *Server) handleMessage(buffer []byte, n int, messages chan Message) {
+	var message Message
+
+	err := json.Unmarshal(buffer[:n], &message)
+	if err != nil {
+		log.Println("데이터 수신에 실패하였습니다.: ", err.Error())
+		return
+	}
+
+	log.Println("서버로부터 받은 헤더: ", message.Type)
+	messages <- Message{
+		Type:    message.Type,
+		Content: message.Content,
 	}
 }
