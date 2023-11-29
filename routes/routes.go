@@ -23,7 +23,7 @@ func SetupRouter() (*gin.Engine, *sql.DB) {
 
 	r.Use(middleware.SetHeader)
 
-	r.GET("/", userController.TestUser)
+	r.GET("/", userController.GetUsers)
 
 	return r, db
 }
