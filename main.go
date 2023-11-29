@@ -8,7 +8,9 @@ import (
 
 func main() {
 	PORT := ":8080"
-	r := routes.SetupRouter()
+	r, db := routes.SetupRouter()
+
+	defer db.Close()
 
 	log.Printf("Listening Server: %s%s\n", utils.GetOutboundIP(), PORT)
 	if err := r.Run(PORT); err != nil {
