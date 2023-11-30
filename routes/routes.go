@@ -26,7 +26,8 @@ func SetupRouter() (*gin.Engine, *sql.DB) {
 
 	user_group := r.Group("/api/user")
 	{
-		user_group.GET("/", userController.GetUsers)
+
+		user_group.GET("/", middleware.TokenAuthMiddleware, userController.GetUsers)
 		user_group.POST("/register/", userController.RegisterUser)
 		user_group.POST("/login/", userController.LoginUser)
 	}
