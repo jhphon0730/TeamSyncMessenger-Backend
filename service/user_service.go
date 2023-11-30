@@ -1,6 +1,7 @@
 package service
 
 import (
+	"TeamSyncMessenger-Backend/DTO"
 	"TeamSyncMessenger-Backend/model"
 	"database/sql"
 	"log"
@@ -26,6 +27,8 @@ func CreateUsersTable(DB *sql.DB) {
 
 type UserService interface {
 	GetUsers() ([]model.User, error)
+	GetUserByUsername(username string) (model.User, error)
+	CreateUser(registerUserDTO DTO.RegisterUserDTO) (DTO.RegisterUserDTO, error)
 }
 
 type userService struct {
@@ -62,4 +65,24 @@ func (us *userService) GetUsers() ([]model.User, error) {
 	}
 
 	return users, nil
+}
+
+func (us *userService) GetUserByUsername(username string) (model.User, error) {
+	var validUser model.User
+
+	err := us.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&validUser.ID)
+	if err != nil {
+		return validUser, err
+	}
+
+	return validUser, nil
+}
+
+func (us *userService) CreateUser(registerUserDTO DTO.RegisterUserDTO) (DTO.RegisterUserDTO, error) {
+	_, err := us.DB.Exec("INSERT INTO users (username, email, password) VALUES(?, ?, ?)", &registerUserDTO.Username, &registerUserDTO.Email, &registerUserDTO.Password)
+	if err != nil {
+		return DTO.RegisterUserDTO{}, err
+	}
+
+	return registerUserDTO, nil
 }
