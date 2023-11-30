@@ -4,6 +4,7 @@ import (
 	"TeamSyncMessenger-Backend/DTO"
 	"TeamSyncMessenger-Backend/helper"
 	"TeamSyncMessenger-Backend/service"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,15 +13,18 @@ import (
 type UserController interface {
 	GetUsers(c *gin.Context)
 	RegisterUser(c *gin.Context)
+	LoginUser(c *gin.Context)
 }
 
 type userController struct {
 	userService service.UserService
+	authService service.AuthService
 }
 
-func NewUserController(userService service.UserService) *userController {
+func NewUserController(userService service.UserService, authService service.AuthService) *userController {
 	return &userController{
 		userService: userService,
+		authService: authService,
 	}
 }
 
@@ -66,4 +70,40 @@ func (uc *userController) RegisterUser(c *gin.Context) {
 
 	res := helper.BuildResponse(true, `사용자 회원가입에 성공하였습니다.`, user)
 	c.JSON(201, res)
+}
+
+func (uc *userController) LoginUser(c *gin.Context) {
+	var userLoginDTO DTO.LoginUserDTO
+
+	if err := c.ShouldBindJSON(&userLoginDTO); err != nil {
+		res := helper.BuildErrorResponse("정상적인 데이터가 아닙니다.", err.Error(), helper.EmptyObj{})
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	checkuser, err := uc.userService.GetUserByUsername(userLoginDTO.Username)
+	if err != nil {
+		res := helper.BuildErrorResponse("사용자를 찾을 수 없습니다.", err.Error(), helper.EmptyObj{})
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	log.Println(userLoginDTO)
+	log.Println(checkuser)
+	err = uc.userService.ComparePasswords(checkuser.Password, userLoginDTO.Password)
+	if err != nil {
+		res := helper.BuildErrorResponse("사용자 비밀번호가 일치하지 않습니다.", err.Error(), helper.EmptyObj{})
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	token, err := uc.authService.CreateUserLoginJWT(userLoginDTO)
+	if err != nil {
+		res := helper.BuildErrorResponse("사용자 토큰을 생성 할 수 없습니다.", err.Error(), helper.EmptyObj{})
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	res := helper.BuildResponse(true, "로그인 성공", token)
+	c.JSON(http.StatusOK, res)
 }

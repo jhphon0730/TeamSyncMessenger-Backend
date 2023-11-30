@@ -14,8 +14,9 @@ var (
 	db *sql.DB = database.InitDB()
 
 	userService service.UserService = service.NewUserService(db)
+	authService service.AuthService = service.NewAuthService()
 
-	userController controller.UserController = controller.NewUserController(userService)
+	userController controller.UserController = controller.NewUserController(userService, authService)
 )
 
 func SetupRouter() (*gin.Engine, *sql.DB) {
@@ -27,6 +28,7 @@ func SetupRouter() (*gin.Engine, *sql.DB) {
 	{
 		user_group.GET("/", userController.GetUsers)
 		user_group.POST("/register/", userController.RegisterUser)
+		user_group.POST("/login/", userController.LoginUser)
 	}
 
 	return r, db

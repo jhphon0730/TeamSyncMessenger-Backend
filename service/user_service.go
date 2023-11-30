@@ -73,7 +73,7 @@ func (us *userService) GetUsers() ([]model.User, error) {
 func (us *userService) GetUserByUsername(username string) (model.User, error) {
 	var validUser model.User
 
-	err := us.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&validUser.ID)
+	err := us.DB.QueryRow("SELECT * FROM users WHERE username = ?", username).Scan(&validUser.ID, &validUser.Username, &validUser.Email, &validUser.Password, &validUser.LastMessage, &validUser.CreatedAt, &validUser.UpdatedAt)
 	if err != nil {
 		return validUser, err
 	}
