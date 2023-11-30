@@ -5,6 +5,8 @@ import (
 	"TeamSyncMessenger-Backend/model"
 	"database/sql"
 	"log"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func CreateUsersTable(DB *sql.DB) {
@@ -29,6 +31,7 @@ type UserService interface {
 	GetUsers() ([]model.User, error)
 	GetUserByUsername(username string) (model.User, error)
 	CreateUser(registerUserDTO DTO.RegisterUserDTO) (DTO.RegisterUserDTO, error)
+	ComparePasswords(hashedPassword, password string) error
 }
 
 type userService struct {
@@ -78,8 +81,29 @@ func (us *userService) GetUserByUsername(username string) (model.User, error) {
 	return validUser, nil
 }
 
+// 사용자가 제공한 비밀번호를 bcrypt 해시를 사용하여 암호화
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
+}
+
+// 사용자가 제공한 비밀번호와 저장된 bcrypt 해시를 비교하는 함수
+func (us *userService) ComparePasswords(hashedPassword, password string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err
+}
+
 func (us *userService) CreateUser(registerUserDTO DTO.RegisterUserDTO) (DTO.RegisterUserDTO, error) {
-	_, err := us.DB.Exec("INSERT INTO users (username, email, password) VALUES(?, ?, ?)", &registerUserDTO.Username, &registerUserDTO.Email, &registerUserDTO.Password)
+	hashedPassword, err := hashPassword(registerUserDTO.Password)
+	if err != nil {
+		return DTO.RegisterUserDTO{}, err
+	}
+	registerUserDTO.Password = hashedPassword
+
+	_, err = us.DB.Exec("INSERT INTO users (username, email, password) VALUES(?, ?, ?)", &registerUserDTO.Username, &registerUserDTO.Email, &registerUserDTO.Password)
 	if err != nil {
 		return DTO.RegisterUserDTO{}, err
 	}
