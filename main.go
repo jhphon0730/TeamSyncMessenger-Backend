@@ -18,6 +18,7 @@ func main() {
 	go server.RunServer()
 
 	log.Printf("Listening Server: %s%s\n", utils.GetOutboundIP(), PORT)
+	log.Println("------------------------------------------------")
 	if err := r.Run(PORT); err != nil {
 		log.Panic(err.Error())
 		return

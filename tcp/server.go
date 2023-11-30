@@ -44,6 +44,7 @@ func NewServer(ServerPort string) *Server {
 		log.Panic(err)
 	}
 
+	log.Println("------------------------------------------------")
 	log.Printf("Listening TCP Server on %s\n", ServerPort)
 
 	return &Server{

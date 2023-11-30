@@ -4,7 +4,6 @@ import (
 	"TeamSyncMessenger-Backend/DTO"
 	"TeamSyncMessenger-Backend/helper"
 	"TeamSyncMessenger-Backend/service"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -88,8 +87,6 @@ func (uc *userController) LoginUser(c *gin.Context) {
 		return
 	}
 
-	log.Println(userLoginDTO)
-	log.Println(checkuser)
 	err = uc.userService.ComparePasswords(checkuser.Password, userLoginDTO.Password)
 	if err != nil {
 		res := helper.BuildErrorResponse("사용자 비밀번호가 일치하지 않습니다.", err.Error(), helper.EmptyObj{})

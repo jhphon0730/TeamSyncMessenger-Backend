@@ -30,7 +30,6 @@ func TokenAuthMiddleware(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	// log.Println(token.Value)
 	// Get the JWT string from the cookie
 	tknStr := token.Value
 
