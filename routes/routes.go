@@ -20,6 +20,7 @@ var (
 )
 
 func SetupRouter() (*gin.Engine, *sql.DB) {
+	// gin.SetMode(gin.ReleaseMode) ! Production Build
 	r := gin.Default()
 
 	r.Use(middleware.SetHeader)

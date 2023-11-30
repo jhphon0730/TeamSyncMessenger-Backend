@@ -57,6 +57,7 @@ func (s *Server) server(messages chan messagetype.Message) {
 	for {
 		msg := <-messages
 		switch msg.Type {
+		// connect_success
 		case "disconnect":
 			clientAddr := msg.Content.(string)
 			if client, ok := s.clients[clientAddr]; ok {
@@ -164,7 +165,7 @@ func (s *Server) handleMessage(buffer []byte, n int, messages chan messagetype.M
 		return
 	}
 
-	log.Println("서버로부터 받은 헤더: ", message.Type)
+	log.Println("클라이언트로부터 받은 헤더: ", message.Type)
 	messages <- messagetype.Message{
 		Type:    message.Type,
 		Content: message.Content,
