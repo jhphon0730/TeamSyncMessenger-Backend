@@ -119,7 +119,7 @@ func (s *Server) receiveMessages(client *Client, messages chan messagetype.Messa
 		// 클라이언트 연결이 종료되면 해당 클라이언트를 서버에서 제거
 		clientAddr := client.Conn.RemoteAddr().String()
 		delete(s.clients, clientAddr)
-		log.Printf("Connection from %s closed\n", clientAddr)
+		log.Printf("%s -> closed\n", clientAddr)
 	}()
 
 	for {
