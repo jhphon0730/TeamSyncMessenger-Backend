@@ -24,6 +24,7 @@ func SetupRouter() (*gin.Engine, *sql.DB) {
 	// gin.SetMode(gin.ReleaseMode) ! Production Build
 	r := gin.Default()
 
+	// r.Use(middleware.SetHeader)
 	r.Use(cors.Default())
 
 	user_group := r.Group("/api/user")

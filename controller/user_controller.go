@@ -54,7 +54,7 @@ func (uc *userController) RegisterUser(c *gin.Context) {
 
 	// GetUserByUsername 함수는 매개변수로 넘긴 Username으로 등록 된 사용자가 없으면 err 를 반환함
 	validUser, _ := uc.userService.GetUserByUsername(registerUserDTO.Username)
-	if validUser.ID != 0 {
+	if validUser.Username != "" {
 		res := helper.BuildErrorResponse(`동일한 사용자 정보가 존재합니다.`, "", helper.EmptyObj{})
 		c.AbortWithStatusJSON(http.StatusBadRequest, res)
 		return
