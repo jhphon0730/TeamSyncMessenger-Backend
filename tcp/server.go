@@ -171,3 +171,15 @@ func (s *Server) handleMessage(buffer []byte, n int, messages chan messagetype.M
 		Content: message.Content,
 	}
 }
+
+func (s *Server) CloseServer() {
+	defer s.tcpListener.Close()
+	message := messagetype.Message{
+		Type:    "server_close",
+		Content: nil,
+	}
+	for _, client := range s.clients {
+		_ = client.sendMessage(message)
+		client.Conn.Close()
+	}
+}
