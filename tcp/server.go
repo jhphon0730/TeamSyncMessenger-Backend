@@ -62,8 +62,8 @@ func (s *Server) server(messages chan messagetype.Message) {
 			clientAddr := msg.Content.(string)
 			if client, ok := s.clients[clientAddr]; ok {
 				// 클라이언트 연결 해제 로직 추가
-				delete(s.clients, clientAddr)
 				client.Conn.Close()
+				delete(s.clients, clientAddr)
 				log.Printf("Disconnect %s\n", clientAddr)
 			}
 		}
@@ -173,13 +173,19 @@ func (s *Server) handleMessage(buffer []byte, n int, messages chan messagetype.M
 }
 
 func (s *Server) CloseServer() {
-	defer s.tcpListener.Close()
 	message := messagetype.Message{
 		Type:    "server_close",
 		Content: nil,
 	}
+
+	// 모든 클라이언트에게 서버 종료 메시지를 보냄
 	for _, client := range s.clients {
-		_ = client.sendMessage(message)
-		client.Conn.Close()
+		if c, ok := s.clients[client.Conn.RemoteAddr().String()]; ok {
+			_ = client.sendMessage(message)
+			c.Conn.Close()
+			delete(s.clients, client.Conn.RemoteAddr().String())
+		}
 	}
+
+	s.tcpListener.Close()
 }
