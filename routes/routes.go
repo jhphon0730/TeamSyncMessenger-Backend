@@ -7,6 +7,7 @@ import (
 	"TeamSyncMessenger-Backend/service"
 	"database/sql"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,7 +24,7 @@ func SetupRouter() (*gin.Engine, *sql.DB) {
 	// gin.SetMode(gin.ReleaseMode) ! Production Build
 	r := gin.Default()
 
-	r.Use(middleware.SetHeader)
+	r.Use(cors.Default())
 
 	user_group := r.Group("/api/user")
 	{

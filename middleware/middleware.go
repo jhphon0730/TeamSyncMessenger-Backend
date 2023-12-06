@@ -17,6 +17,11 @@ func SetHeader(c *gin.Context) {
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "-1")
 
+	if c.Request.Method == "OPTIONS" {
+		c.AbortWithStatus(204)
+		return
+	}
+
 	// Pass on to the next-in-chain
 	c.Next()
 }
